@@ -38,9 +38,11 @@ export interface DealReport {
 
 // Check if EmailJS is configured
 export const isEmailConfigured = (): boolean => {
-  return EMAILJS_SERVICE_ID !== 'demo' && 
-         EMAILJS_TEMPLATE_ID !== 'demo' && 
-         EMAILJS_PUBLIC_KEY !== 'demo';
+  const hasServiceId = EMAILJS_SERVICE_ID !== 'demo' && EMAILJS_SERVICE_ID !== '';
+  const hasTemplateId = EMAILJS_TEMPLATE_ID !== 'demo' && EMAILJS_TEMPLATE_ID !== '';
+  const hasPublicKey = EMAILJS_PUBLIC_KEY !== 'demo' && EMAILJS_PUBLIC_KEY !== '';
+  
+  return hasServiceId && hasTemplateId && hasPublicKey;
 };
 
 // Initialize EmailJS (call once on app load)
@@ -87,15 +89,17 @@ export const sendEmail = async (data: EmailData): Promise<{ success: boolean; me
   try {
     const emailjs = await import('@emailjs/browser');
     
+    const templateParams = {
+      to_email: sanitizedData.to_email,
+      to_name: sanitizedData.to_name,
+      subject: sanitizedData.subject,
+      message: sanitizedData.message,
+    };
+    
     await emailjs.send(
       EMAILJS_SERVICE_ID,
       EMAILJS_TEMPLATE_ID,
-      {
-        to_email: sanitizedData.to_email,
-        to_name: sanitizedData.to_name,
-        subject: sanitizedData.subject,
-        message: sanitizedData.message,
-      },
+      templateParams,
       EMAILJS_PUBLIC_KEY
     );
 

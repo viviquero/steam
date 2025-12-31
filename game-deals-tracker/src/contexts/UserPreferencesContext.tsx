@@ -51,7 +51,7 @@ interface UserPreferencesProviderProps {
 }
 
 export function UserPreferencesProvider({ children }: UserPreferencesProviderProps) {
-  const { user, isDemo } = useAuth();
+  const { user } = useAuth();
   const [preferences, setPreferences] = useState<UserPreferences>(DEFAULT_PREFERENCES);
   const [loading, setLoading] = useState(true);
 
@@ -86,8 +86,8 @@ export function UserPreferencesProvider({ children }: UserPreferencesProviderPro
         return;
       }
 
-      // Demo mode or no Firebase: load from localStorage
-      if (isDemo || !isFirebaseConfigured || !db) {
+      // Local mode or no Firebase: load from localStorage
+      if (!isFirebaseConfigured || !db) {
         const localPrefs = loadLocalPreferences();
         setPreferences(localPrefs);
         setLoading(false);
@@ -113,7 +113,7 @@ export function UserPreferencesProvider({ children }: UserPreferencesProviderPro
     };
 
     loadPreferences();
-  }, [user, isDemo]);
+  }, [user]);
 
   // Update preferences
   const updatePreferences = async (updates: Partial<UserPreferences>): Promise<void> => {
@@ -124,7 +124,7 @@ export function UserPreferencesProvider({ children }: UserPreferencesProviderPro
     saveLocalPreferences(newPreferences);
 
     // If logged in with Firebase, also save to Firestore
-    if (user && !isDemo && isFirebaseConfigured && db) {
+    if (user && isFirebaseConfigured && db) {
       try {
         await setDoc(doc(db, 'users', user.uid, 'settings', 'preferences'), newPreferences);
       } catch (error) {
@@ -138,7 +138,7 @@ export function UserPreferencesProvider({ children }: UserPreferencesProviderPro
     setPreferences(DEFAULT_PREFERENCES);
     saveLocalPreferences(DEFAULT_PREFERENCES);
 
-    if (user && !isDemo && isFirebaseConfigured && db) {
+    if (user && isFirebaseConfigured && db) {
       try {
         await setDoc(doc(db, 'users', user.uid, 'settings', 'preferences'), DEFAULT_PREFERENCES);
       } catch (error) {

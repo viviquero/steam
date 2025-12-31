@@ -39,11 +39,11 @@ interface WishlistProviderProps {
 }
 
 export function WishlistProvider({ children }: WishlistProviderProps) {
-  const { user, isDemo } = useAuth();
+  const { user } = useAuth();
   const [items, setItems] = useState<WishlistItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Load wishlist from localStorage (for demo mode)
+  // Load wishlist from localStorage (for local mode)
   const loadLocalWishlist = (): WishlistItem[] => {
     try {
       const saved = localStorage.getItem(WISHLIST_STORAGE_KEY);
@@ -61,7 +61,7 @@ export function WishlistProvider({ children }: WishlistProviderProps) {
     return [];
   };
 
-  // Save wishlist to localStorage (for demo mode)
+  // Save wishlist to localStorage (for local mode)
   const saveLocalWishlist = (wishlist: WishlistItem[]) => {
     try {
       localStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(wishlist));
@@ -79,8 +79,8 @@ export function WishlistProvider({ children }: WishlistProviderProps) {
       return;
     }
 
-    // Demo mode: load from localStorage
-    if (isDemo || !isFirebaseConfigured || !db) {
+    // Local mode: load from localStorage
+    if (!isFirebaseConfigured || !db) {
       const localItems = loadLocalWishlist();
       setItems(localItems);
       setLoading(false);
@@ -114,7 +114,7 @@ export function WishlistProvider({ children }: WishlistProviderProps) {
     });
 
     return () => unsubscribe();
-  }, [user, isDemo]);
+  }, [user]);
 
   // Add game to wishlist
   const addToWishlist = async (item: Omit<WishlistItem, 'id' | 'addedAt' | 'lastChecked'>): Promise<void> => {
@@ -128,8 +128,8 @@ export function WishlistProvider({ children }: WishlistProviderProps) {
       lastChecked: now,
     };
 
-    // Demo mode: save to localStorage
-    if (isDemo || !isFirebaseConfigured || !db) {
+    // Local mode: save to localStorage
+    if (!isFirebaseConfigured || !db) {
       const updatedItems = [...items.filter(i => i.gameID !== item.gameID), newItem];
       setItems(updatedItems);
       saveLocalWishlist(updatedItems);
@@ -154,8 +154,8 @@ export function WishlistProvider({ children }: WishlistProviderProps) {
   const removeFromWishlist = async (gameID: string): Promise<void> => {
     if (!user) return;
 
-    // Demo mode: remove from localStorage
-    if (isDemo || !isFirebaseConfigured || !db) {
+    // Local mode: remove from localStorage
+    if (!isFirebaseConfigured || !db) {
       const updatedItems = items.filter(i => i.gameID !== gameID);
       setItems(updatedItems);
       saveLocalWishlist(updatedItems);
@@ -176,8 +176,8 @@ export function WishlistProvider({ children }: WishlistProviderProps) {
   const updateTargetPrice = async (gameID: string, targetPrice: number | null): Promise<void> => {
     if (!user) return;
 
-    // Demo mode: update in localStorage
-    if (isDemo || !isFirebaseConfigured || !db) {
+    // Local mode: update in localStorage
+    if (!isFirebaseConfigured || !db) {
       const updatedItems = items.map(item => 
         item.gameID === gameID ? { ...item, targetPrice } : item
       );

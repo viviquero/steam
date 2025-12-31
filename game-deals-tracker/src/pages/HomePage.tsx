@@ -4,7 +4,7 @@ import { useSettings } from '@/contexts/SettingsContext';
 import { useUserPreferences } from '@/contexts/UserPreferencesContext';
 import type { GameDeal, Store, DealsFilter as DealsFilterType } from '@/types';
 import { Card, CardContent, Button } from '@/components/ui';
-import { ExternalLink, TrendingDown, Loader2, BarChart3, Heart, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Star, LogIn } from 'lucide-react';
+import { ExternalLink, TrendingDown, Loader2, BarChart3, Heart, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Star, LogIn, Filter } from 'lucide-react';
 import { DealsFilter } from '@/components/DealsFilter';
 import { GamePriceComparison } from '@/components/GamePriceComparison';
 import { useWishlist } from '@/contexts/WishlistContext';
@@ -28,6 +28,7 @@ export function HomePage() {
     const saved = localStorage.getItem('wishlist-section-visible');
     return saved !== null ? saved === 'true' : true;
   });
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
   
   // Initialize filters with user preferences
   const getInitialFilters = useCallback((): DealsFilterType => {
@@ -197,18 +198,31 @@ export function HomePage() {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
+      {/* Header with integrated filter button */}
       <div className="text-center space-y-2">
-        <h1 className="text-3xl sm:text-4xl font-bold">
-          <span className="text-[hsl(var(--primary))]">{t.home.title}</span> {t.home.titleHighlight}
-        </h1>
+        <div className="flex items-center justify-center gap-3">
+          <h1 className="text-3xl sm:text-4xl font-bold">
+            <span className="text-[hsl(var(--primary))]">{t.home.title}</span> {t.home.titleHighlight}
+          </h1>
+          <button
+            onClick={() => setFiltersExpanded(!filtersExpanded)}
+            className={`p-2 rounded-lg transition-colors ${
+              filtersExpanded 
+                ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]' 
+                : 'bg-[hsl(var(--secondary))] hover:bg-[hsl(var(--accent))]'
+            }`}
+            title={filtersExpanded ? (language === 'es' ? 'Ocultar filtros' : 'Hide filters') : (language === 'es' ? 'Mostrar filtros' : 'Show filters')}
+          >
+            <Filter className="h-5 w-5" />
+          </button>
+        </div>
         <p className="text-[hsl(var(--muted-foreground))] max-w-2xl mx-auto">
           {t.home.subtitle}
         </p>
       </div>
 
-      {/* Filters - Above games */}
-      <DealsFilter onFilterChange={handleFilterChange} initialFilters={filters} />
+      {/* Filters - Collapsible */}
+      <DealsFilter onFilterChange={handleFilterChange} initialFilters={filters} isExpanded={filtersExpanded} />
 
       {/* Wishlist Section - Collapsible */}
       <div className="space-y-3">

@@ -3,8 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, Input, Button } from '@/components/ui';
-import { Gamepad2, Mail, Lock, AlertCircle, Sparkles } from 'lucide-react';
-import { isFirebaseConfigured } from '@/config/firebase';
+import { Gamepad2, Mail, Lock, AlertCircle } from 'lucide-react';
 
 export function LoginPage() {
   const [email, setEmail] = useState('');
@@ -12,7 +11,7 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  const { login, loginAsDemo } = useAuth();
+  const { login } = useAuth();
   const { t } = useSettings();
   const navigate = useNavigate();
 
@@ -36,11 +35,6 @@ export function LoginPage() {
     }
   };
 
-  const handleDemoLogin = () => {
-    loginAsDemo();
-    navigate('/');
-  };
-
   return (
     <div className="min-h-[80vh] flex items-center justify-center">
       <Card className="w-full max-w-md">
@@ -54,15 +48,6 @@ export function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Demo Mode Banner */}
-          {!isFirebaseConfigured && (
-            <div className="mb-4 p-3 rounded-lg bg-[hsl(var(--warning))]/10 border border-[hsl(var(--warning))]/30">
-              <p className="text-sm text-[hsl(var(--warning))] text-center">
-                🎮 {t.login.demoMode}
-              </p>
-            </div>
-          )}
-
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="flex items-center gap-2 p-3 rounded-lg bg-[hsl(var(--destructive))]/10 text-[hsl(var(--destructive))]">
@@ -103,29 +88,6 @@ export function LoginPage() {
               {t.login.signIn}
             </Button>
           </form>
-
-          {/* Demo Login Button */}
-          <div className="mt-4">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-[hsl(var(--border))]" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-[hsl(var(--card))] px-2 text-[hsl(var(--muted-foreground))]">
-                  {t.login.or}
-                </span>
-              </div>
-            </div>
-            <Button 
-              type="button" 
-              variant="outline" 
-              className="w-full mt-4"
-              onClick={handleDemoLogin}
-            >
-              <Sparkles className="h-4 w-4 mr-2" />
-              {t.login.tryDemo}
-            </Button>
-          </div>
 
           <div className="mt-6 text-center text-sm">
             <span className="text-[hsl(var(--muted-foreground))]">{t.login.noAccount} </span>

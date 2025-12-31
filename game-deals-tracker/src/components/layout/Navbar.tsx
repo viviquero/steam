@@ -2,12 +2,12 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { Button } from '@/components/ui';
-import { Gamepad2, Search, Heart, Settings, LogOut, User, Menu, X, Sparkles } from 'lucide-react';
+import { Gamepad2, Search, Heart, Settings, LogOut, User, Menu, X } from 'lucide-react';
 import { useState } from 'react';
 import logger from '@/utils/logger';
 
 export function Navbar() {
-  const { user, logout, isDemo } = useAuth();
+  const { user, logout } = useAuth();
   const { t } = useSettings();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -62,12 +62,6 @@ export function Navbar() {
           <div className="hidden md:flex items-center gap-2">
             {user ? (
               <>
-                {isDemo && (
-                  <div className="flex items-center gap-1 px-2 py-1 rounded bg-[hsl(var(--warning))]/20 text-[hsl(var(--warning))] text-xs font-medium">
-                    <Sparkles className="h-3 w-3" />
-                    {t.common.demo}
-                  </div>
-                )}
                 <Link
                   to="/settings"
                   className={`

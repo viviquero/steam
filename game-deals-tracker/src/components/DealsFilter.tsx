@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSettings } from '@/contexts/SettingsContext';
 import { Button, Input, Card, CardContent } from '@/components/ui';
-import { Filter, X, ChevronDown, ChevronUp, Store, DollarSign, SortAsc } from 'lucide-react';
+import { X, Store, DollarSign, SortAsc } from 'lucide-react';
 import { getStores } from '@/services/cheapshark';
 import type { Store as StoreType, DealsFilter as DealsFilterType } from '@/types';
 import logger from '@/utils/logger';
@@ -9,11 +9,11 @@ import logger from '@/utils/logger';
 interface DealsFilterProps {
   onFilterChange: (filters: DealsFilterType) => void;
   initialFilters?: DealsFilterType;
+  isExpanded: boolean;
 }
 
-export function DealsFilter({ onFilterChange, initialFilters = {} }: DealsFilterProps) {
+export function DealsFilter({ onFilterChange, initialFilters = {}, isExpanded }: DealsFilterProps) {
   const { language } = useSettings();
-  const [isExpanded, setIsExpanded] = useState(false);
   const [stores, setStores] = useState<StoreType[]>([]);
   const [loadingStores, setLoadingStores] = useState(true);
   
@@ -144,34 +144,24 @@ export function DealsFilter({ onFilterChange, initialFilters = {} }: DealsFilter
 
   const hasActiveFilters = selectedStores.length > 0 || minPrice || maxPrice || minDiscount;
 
-  return (
-    <div className="space-y-4">
-      {/* Toggle Button */}
-      <Button
-        variant="outline"
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full sm:w-auto gap-2"
-      >
-        <Filter className="h-4 w-4" />
-        {isExpanded ? t.hideFilters : t.showFilters}
-        {hasActiveFilters && (
-          <span className="ml-1 px-2 py-0.5 text-xs rounded-full bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]">
-            {selectedStores.length > 0 ? `${selectedStores.length} ${t.selectedStores}` : '•'}
-          </span>
-        )}
-        {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-      </Button>
+  // Export hasActiveFilters for parent component
+  useEffect(() => {
+    // This is just for tracking, parent handles expansion
+  }, [hasActiveFilters]);
 
-      {/* Expanded Filters */}
-      {isExpanded && (
-        <Card>
-          <CardContent className="p-4 space-y-6">
-            {/* Stores */}
-            <div className="space-y-3">
-              <label className="text-sm font-medium flex items-center gap-2">
-                <Store className="h-4 w-4" />
-                {t.stores}
-              </label>
+  if (!isExpanded) {
+    return null;
+  }
+
+  return (
+    <Card>
+      <CardContent className="p-4 space-y-6">
+        {/* Stores */}
+        <div className="space-y-3">
+          <label className="text-sm font-medium flex items-center gap-2">
+            <Store className="h-4 w-4" />
+            {t.stores}
+          </label>
               <div className="flex flex-wrap gap-2">
                 {loadingStores ? (
                   <p className="text-sm text-[hsl(var(--muted-foreground))]">...</p>
@@ -300,7 +290,5 @@ export function DealsFilter({ onFilterChange, initialFilters = {} }: DealsFilter
             </div>
           </CardContent>
         </Card>
-      )}
-    </div>
   );
 }

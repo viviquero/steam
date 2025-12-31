@@ -41,7 +41,7 @@ if (isFirebaseConfigured) {
   }
 } else {
   if (import.meta.env.DEV) {
-    console.warn('Firebase not configured. Running in demo mode.');
+    // Firebase not configured - running in local mode
   }
 }
 
