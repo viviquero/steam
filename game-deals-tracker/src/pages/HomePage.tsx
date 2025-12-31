@@ -1,16 +1,51 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { getDeals, getStores, getDiscountPercentage, getDealRedirectUrl, getStoreIconUrl } from '@/services/cheapshark';
 import { useSettings } from '@/contexts/SettingsContext';
-import type { GameDeal, Store } from '@/types';
-import { Card, CardContent } from '@/components/ui';
-import { ExternalLink, TrendingDown, Loader2 } from 'lucide-react';
+import type { GameDeal, Store, DealsFilter as DealsFilterType } from '@/types';
+import { Card, CardContent, Button } from '@/components/ui';
+import { ExternalLink, TrendingDown, Loader2, BarChart3, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
+import { DealsFilter } from '@/components/DealsFilter';
+import { GamePriceComparison } from '@/components/GamePriceComparison';
+import { useWishlist } from '@/contexts/WishlistContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+
+const DEALS_PER_PAGE = 30; // 5 columns x 6 rows
 
 export function HomePage() {
-  const { t, formatPrice } = useSettings();
+  const { t, formatPrice, language } = useSettings();
+  const { user } = useAuth();
+  const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
+  const navigate = useNavigate();
+  
   const [deals, setDeals] = useState<GameDeal[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [filters, setFilters] = useState<DealsFilterType>({ onSale: true, pageSize: DEALS_PER_PAGE, sortBy: 'Deal Rating' });
+  const [comparisonGame, setComparisonGame] = useState<{ gameID: string; title: string } | null>(null);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [hasMorePages, setHasMorePages] = useState(true);
+
+  const fetchDeals = useCallback(async (currentFilters: DealsFilterType, page: number = 0) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const dealsData = await getDeals({ 
+        ...currentFilters, 
+        pageSize: DEALS_PER_PAGE,
+        pageNumber: page 
+      });
+      setDeals(dealsData);
+      // If we got fewer deals than requested, there are no more pages
+      setHasMorePages(dealsData.length === DEALS_PER_PAGE);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load deals');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     async function fetchData() {
@@ -19,7 +54,7 @@ export function HomePage() {
         setError(null);
         
         const [dealsData, storesData] = await Promise.all([
-          getDeals({ pageSize: 20, sortBy: 'Deal Rating', onSale: true }),
+          getDeals(filters),
           getStores(),
         ]);
         
@@ -34,6 +69,40 @@ export function HomePage() {
 
     fetchData();
   }, []);
+
+  // Refetch when filters change
+  const handleFilterChange = useCallback((newFilters: DealsFilterType) => {
+    setFilters(newFilters);
+    setCurrentPage(0);
+    fetchDeals(newFilters, 0);
+  }, [fetchDeals]);
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+    fetchDeals(filters, newPage);
+    // Scroll to top of deals
+    window.scrollTo({ top: 300, behavior: 'smooth' });
+  };
+
+  const handleWishlistToggle = async (deal: GameDeal) => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    if (isInWishlist(deal.gameID)) {
+      await removeFromWishlist(deal.gameID);
+    } else {
+      await addToWishlist({
+        gameID: deal.gameID,
+        gameTitle: deal.title,
+        steamAppID: deal.steamAppID,
+        thumb: deal.thumb,
+        targetPrice: null,
+        currentBestPrice: parseFloat(deal.salePrice),
+      });
+    }
+  };
 
   const getStoreName = (storeID: string) => {
     const store = stores.find(s => s.storeID === storeID);
@@ -86,6 +155,9 @@ export function HomePage() {
         </p>
       </div>
 
+      {/* Filters */}
+      <DealsFilter onFilterChange={handleFilterChange} initialFilters={filters} />
+
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <Card>
@@ -117,63 +189,91 @@ export function HomePage() {
       </div>
 
       {/* Deals Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {deals.map((deal) => (
-          <Card key={deal.dealID} className="group hover:border-[hsl(var(--primary))] transition-colors overflow-hidden">
-            <div className="aspect-video relative overflow-hidden bg-[hsl(var(--secondary))]">
-              <img
-                src={deal.thumb}
-                alt={deal.title}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                loading="lazy"
-              />
-              {getDiscountPercentage(deal.savings) > 0 && (
-                <div className="absolute top-2 right-2 bg-[hsl(var(--success))] text-white text-xs font-bold px-2 py-1 rounded">
-                  -{getDiscountPercentage(deal.savings)}%
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-[hsl(var(--primary))]" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+          {deals.map((deal) => {
+            const inWishlist = isInWishlist(deal.gameID);
+            return (
+              <Card key={deal.dealID} className="group hover:border-[hsl(var(--primary))] transition-colors overflow-hidden">
+                <div className="aspect-video relative overflow-hidden bg-[hsl(var(--secondary))]">
+                  <img
+                    src={deal.thumb}
+                    alt={deal.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    loading="lazy"
+                  />
+                  {getDiscountPercentage(deal.savings) > 0 && (
+                    <div className="absolute top-1 right-1 bg-[hsl(var(--success))] text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                      -{getDiscountPercentage(deal.savings)}%
+                    </div>
+                  )}
+                  {/* Quick actions overlay */}
+                  <div className="absolute top-1 left-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => handleWishlistToggle(deal)}
+                      className={`p-1 rounded backdrop-blur-sm transition-colors ${
+                        inWishlist 
+                          ? 'bg-red-500/90 text-white' 
+                          : 'bg-black/50 text-white hover:bg-black/70'
+                      }`}
+                      title={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+                    >
+                      <Heart className={`h-3 w-3 ${inWishlist ? 'fill-current' : ''}`} />
+                    </button>
+                    <button
+                      onClick={() => setComparisonGame({ gameID: deal.gameID, title: deal.title })}
+                      className="p-1 rounded bg-black/50 text-white hover:bg-black/70 backdrop-blur-sm transition-colors"
+                      title="Compare prices"
+                    >
+                      <BarChart3 className="h-3 w-3" />
+                    </button>
+                  </div>
                 </div>
-              )}
-            </div>
-            <CardContent className="p-4 space-y-3">
-              <h3 className="font-semibold line-clamp-2 min-h-[2.5rem]" title={deal.title}>
-                {deal.title}
-              </h3>
+                <CardContent className="p-2.5 space-y-1.5">
+                  <h3 className="font-medium text-sm line-clamp-2 min-h-[2.25rem] leading-tight" title={deal.title}>
+                    {deal.title}
+                  </h3>
               
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 {getStoreIcon(deal.storeID) && (
                   <img
                     src={getStoreIcon(deal.storeID)}
                     alt={getStoreName(deal.storeID)}
-                    className="w-4 h-4"
+                    className="w-3 h-3"
                   />
                 )}
-                <span className="text-xs text-[hsl(var(--muted-foreground))]">
+                <span className="text-[10px] text-[hsl(var(--muted-foreground))] truncate">
                   {getStoreName(deal.storeID)}
                 </span>
               </div>
 
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg font-bold text-[hsl(var(--success))]">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-bold text-[hsl(var(--success))]">
                     {formatPrice(deal.salePrice)}
                   </span>
                   {parseFloat(deal.normalPrice) > parseFloat(deal.salePrice) && (
-                    <span className="text-sm text-[hsl(var(--muted-foreground))] line-through">
+                    <span className="text-[10px] text-[hsl(var(--muted-foreground))] line-through">
                       {formatPrice(deal.normalPrice)}
                     </span>
                   )}
                 </div>
-                <TrendingDown className="h-4 w-4 text-[hsl(var(--success))]" />
+                <TrendingDown className="h-3 w-3 text-[hsl(var(--success))]" />
               </div>
 
               {deal.steamRatingPercent && parseInt(deal.steamRatingPercent) > 0 && (
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 h-1.5 bg-[hsl(var(--secondary))] rounded-full overflow-hidden">
+                <div className="flex items-center gap-1.5">
+                  <div className="flex-1 h-1 bg-[hsl(var(--secondary))] rounded-full overflow-hidden">
                     <div
                       className="h-full bg-[hsl(var(--primary))] rounded-full"
                       style={{ width: `${deal.steamRatingPercent}%` }}
                     />
                   </div>
-                  <span className="text-xs text-[hsl(var(--muted-foreground))]">
+                  <span className="text-[10px] text-[hsl(var(--muted-foreground))]">
                     {deal.steamRatingPercent}%
                   </span>
                 </div>
@@ -183,15 +283,117 @@ export function HomePage() {
                 href={getDealRedirectUrl(deal.dealID)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] hover:bg-[hsl(var(--primary))]/90 transition-colors text-sm font-medium"
+                className="flex items-center justify-center gap-1.5 w-full py-1.5 rounded-md bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] hover:bg-[hsl(var(--primary))]/90 transition-colors text-xs font-medium"
               >
                 {t.home.getDeal}
-                <ExternalLink className="h-4 w-4" />
+                <ExternalLink className="h-3 w-3" />
               </a>
             </CardContent>
           </Card>
-        ))}
-      </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {!loading && deals.length > 0 && (
+        <div className="flex items-center justify-center gap-2 pt-6">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 0}
+            className="gap-1"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            {language === 'es' ? 'Anterior' : 'Previous'}
+          </Button>
+
+          {/* Page numbers */}
+          <div className="flex items-center gap-1">
+            {currentPage > 1 && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handlePageChange(0)}
+                  className="w-9 h-9 p-0"
+                >
+                  1
+                </Button>
+                {currentPage > 2 && <span className="px-1 text-[hsl(var(--muted-foreground))]">...</span>}
+              </>
+            )}
+
+            {currentPage > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handlePageChange(currentPage - 1)}
+                className="w-9 h-9 p-0"
+              >
+                {currentPage}
+              </Button>
+            )}
+
+            <Button
+              variant="primary"
+              size="sm"
+              className="w-9 h-9 p-0"
+              disabled
+            >
+              {currentPage + 1}
+            </Button>
+
+            {hasMorePages && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handlePageChange(currentPage + 1)}
+                className="w-9 h-9 p-0"
+              >
+                {currentPage + 2}
+              </Button>
+            )}
+
+            {hasMorePages && (
+              <>
+                <span className="px-1 text-[hsl(var(--muted-foreground))]">...</span>
+              </>
+            )}
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={!hasMorePages}
+            className="gap-1"
+          >
+            {language === 'es' ? 'Siguiente' : 'Next'}
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
+      {/* Current page indicator */}
+      {!loading && deals.length > 0 && (
+        <p className="text-center text-sm text-[hsl(var(--muted-foreground))]">
+          {language === 'es' 
+            ? `Página ${currentPage + 1} · ${deals.length} ofertas mostradas`
+            : `Page ${currentPage + 1} · ${deals.length} deals shown`
+          }
+        </p>
+      )}
+
+      {/* Price Comparison Modal */}
+      {comparisonGame && (
+        <GamePriceComparison
+          gameID={comparisonGame.gameID}
+          gameTitle={comparisonGame.title}
+          onClose={() => setComparisonGame(null)}
+        />
+      )}
     </div>
   );
 }

@@ -5,8 +5,9 @@ import { useWishlist } from '@/contexts/WishlistContext';
 import { useAuth } from '@/contexts/AuthContext';
 import type { GameSearchResult } from '@/types';
 import { Input, Card, CardContent, Button } from '@/components/ui';
-import { Search, Loader2, Heart, HeartOff } from 'lucide-react';
+import { Search, Loader2, Heart, HeartOff, BarChart3 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { GamePriceComparison } from '@/components/GamePriceComparison';
 
 export function SearchPage() {
   const { t, formatPrice } = useSettings();
@@ -17,6 +18,7 @@ export function SearchPage() {
   const [results, setResults] = useState<GameSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [comparisonGame, setComparisonGame] = useState<{ gameID: string; title: string } | null>(null);
 
   const handleSearch = useCallback(async () => {
     if (!query.trim()) return;
@@ -142,6 +144,14 @@ export function SearchPage() {
                           >
                             {inWishlist ? <HeartOff className="h-4 w-4" /> : <Heart className="h-4 w-4" />}
                           </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            title={t.search.viewDeals}
+                            onClick={() => setComparisonGame({ gameID: game.gameID, title: game.external })}
+                          >
+                            <BarChart3 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -159,6 +169,15 @@ export function SearchPage() {
           </p>
         </div>
       ) : null}
+
+      {/* Price Comparison Modal */}
+      {comparisonGame && (
+        <GamePriceComparison
+          gameID={comparisonGame.gameID}
+          gameTitle={comparisonGame.title}
+          onClose={() => setComparisonGame(null)}
+        />
+      )}
     </div>
   );
 }
