@@ -8,6 +8,8 @@ import { Input, Card, CardContent, Button } from '@/components/ui';
 import { Search, Loader2, Heart, HeartOff, BarChart3 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { GamePriceComparison } from '@/components/GamePriceComparison';
+import { sanitizeSearchQuery, searchRateLimiter } from '@/utils/validation';
+import logger from '@/utils/logger';
 
 export function SearchPage() {
   const { t, formatPrice } = useSettings();
@@ -23,13 +25,20 @@ export function SearchPage() {
   const handleSearch = useCallback(async () => {
     if (!query.trim()) return;
 
+    // Rate limiting
+    if (!searchRateLimiter.isAllowed('search')) {
+      logger.warn('Search rate limited');
+      return;
+    }
+
     try {
       setLoading(true);
       setSearched(true);
-      const games = await searchGames(query, 20);
+      const sanitizedQuery = sanitizeSearchQuery(query);
+      const games = await searchGames(sanitizedQuery, 20);
       setResults(games);
     } catch (error) {
-      console.error('Search error:', error);
+      logger.error('Search error:', error);
       setResults([]);
     } finally {
       setLoading(false);

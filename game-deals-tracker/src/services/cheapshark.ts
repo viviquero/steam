@@ -1,4 +1,5 @@
 import type { GameDeal, Store, GameInfo, GameSearchResult, DealsFilter } from '@/types';
+import logger from '@/utils/logger';
 
 const API_BASE_URL = 'https://www.cheapshark.com/api/1.0';
 
@@ -178,7 +179,7 @@ export async function getDealsForGame(gameID: string): Promise<Array<{
       savings: deal.savings,
     }));
   } catch (error) {
-    console.error('Error fetching deals for game:', error);
+    logger.error('Error fetching deals for game:', error);
     return [];
   }
 }

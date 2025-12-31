@@ -2,6 +2,7 @@
 import { getDealsForGame } from './cheapshark';
 import type { WishlistItem } from '@/types';
 import type { PriceAlert, DealReport } from './email';
+import logger from '@/utils/logger';
 
 // Store info mapping
 const STORE_NAMES: Record<string, string> = {
@@ -78,7 +79,7 @@ export const checkGamePrice = async (item: WishlistItem): Promise<PriceCheckResu
       discount,
     };
   } catch (error) {
-    console.error(`Error checking price for ${item.gameTitle}:`, error);
+    logger.error(`Error checking price for ${item.gameTitle}:`, error);
     return null;
   }
 };

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { getDeals, getStores, getDiscountPercentage, getDealRedirectUrl, getStoreIconUrl } from '@/services/cheapshark';
 import { useSettings } from '@/contexts/SettingsContext';
+import { useUserPreferences } from '@/contexts/UserPreferencesContext';
 import type { GameDeal, Store, DealsFilter as DealsFilterType } from '@/types';
 import { Card, CardContent, Button } from '@/components/ui';
 import { ExternalLink, TrendingDown, Loader2, BarChart3, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -16,36 +17,75 @@ export function HomePage() {
   const { t, formatPrice, language } = useSettings();
   const { user } = useAuth();
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
+  const { preferences, applyPreferencesToFilters } = useUserPreferences();
   const navigate = useNavigate();
   
   const [deals, setDeals] = useState<GameDeal[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<DealsFilterType>({ onSale: true, pageSize: DEALS_PER_PAGE, sortBy: 'Deal Rating' });
+  
+  // Initialize filters with user preferences
+  const getInitialFilters = useCallback((): DealsFilterType => {
+    const prefFilters = applyPreferencesToFilters();
+    return {
+      onSale: true,
+      pageSize: DEALS_PER_PAGE,
+      sortBy: (prefFilters.sortBy as DealsFilterType['sortBy']) || 'Deal Rating',
+      storeID: prefFilters.storeID,
+      lowerPrice: prefFilters.lowerPrice,
+      upperPrice: prefFilters.upperPrice,
+    };
+  }, [applyPreferencesToFilters]);
+  
+  const [filters, setFilters] = useState<DealsFilterType>(() => getInitialFilters());
   const [comparisonGame, setComparisonGame] = useState<{ gameID: string; title: string } | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [hasMorePages, setHasMorePages] = useState(true);
+
+  // Update filters when preferences change
+  useEffect(() => {
+    setFilters(getInitialFilters());
+  }, [preferences, getInitialFilters]);
+
+  // Helper function to deduplicate deals - keep only the cheapest per game
+  const deduplicateDeals = useCallback((dealsData: GameDeal[]): GameDeal[] => {
+    const gameMap = new Map<string, GameDeal>();
+    
+    for (const deal of dealsData) {
+      const existing = gameMap.get(deal.gameID);
+      if (!existing || parseFloat(deal.salePrice) < parseFloat(existing.salePrice)) {
+        gameMap.set(deal.gameID, deal);
+      }
+    }
+    
+    return Array.from(gameMap.values());
+  }, []);
 
   const fetchDeals = useCallback(async (currentFilters: DealsFilterType, page: number = 0) => {
     try {
       setLoading(true);
       setError(null);
       
+      // Fetch more deals to account for duplicates that will be filtered out
       const dealsData = await getDeals({ 
         ...currentFilters, 
-        pageSize: DEALS_PER_PAGE,
+        pageSize: DEALS_PER_PAGE * 2, // Fetch extra to compensate for deduplication
         pageNumber: page 
       });
-      setDeals(dealsData);
-      // If we got fewer deals than requested, there are no more pages
-      setHasMorePages(dealsData.length === DEALS_PER_PAGE);
+      
+      // Deduplicate and limit to desired page size
+      const uniqueDeals = deduplicateDeals(dealsData).slice(0, DEALS_PER_PAGE);
+      setDeals(uniqueDeals);
+      
+      // If we got fewer unique deals than requested, there might not be more pages
+      setHasMorePages(uniqueDeals.length === DEALS_PER_PAGE);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load deals');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [deduplicateDeals]);
 
   useEffect(() => {
     async function fetchData() {
@@ -54,11 +94,13 @@ export function HomePage() {
         setError(null);
         
         const [dealsData, storesData] = await Promise.all([
-          getDeals(filters),
+          getDeals({ ...filters, pageSize: DEALS_PER_PAGE * 2 }),
           getStores(),
         ]);
         
-        setDeals(dealsData);
+        // Deduplicate - keep only the cheapest deal per game
+        const uniqueDeals = deduplicateDeals(dealsData).slice(0, DEALS_PER_PAGE);
+        setDeals(uniqueDeals);
         setStores(storesData);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load deals');
@@ -68,7 +110,7 @@ export function HomePage() {
     }
 
     fetchData();
-  }, []);
+  }, [deduplicateDeals]);
 
   // Refetch when filters change
   const handleFilterChange = useCallback((newFilters: DealsFilterType) => {
@@ -155,38 +197,8 @@ export function HomePage() {
         </p>
       </div>
 
-      {/* Filters */}
+      {/* Filters - Above games */}
       <DealsFilter onFilterChange={handleFilterChange} initialFilters={filters} />
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-[hsl(var(--primary))]">{deals.length}+</p>
-            <p className="text-sm text-[hsl(var(--muted-foreground))]">{t.home.activeDeals}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-[hsl(var(--success))]">{stores.length}</p>
-            <p className="text-sm text-[hsl(var(--muted-foreground))]">{t.home.stores}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-[hsl(var(--warning))]">
-              {deals.length > 0 ? `${Math.max(...deals.map(d => getDiscountPercentage(d.savings)))}%` : '0%'}
-            </p>
-            <p className="text-sm text-[hsl(var(--muted-foreground))]">{t.home.maxDiscount}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-[hsl(var(--foreground))]">24/7</p>
-            <p className="text-sm text-[hsl(var(--muted-foreground))]">{t.home.priceUpdates}</p>
-          </CardContent>
-        </Card>
-      </div>
 
       {/* Deals Grid */}
       {loading ? (
@@ -385,6 +397,36 @@ export function HomePage() {
           }
         </p>
       )}
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-[hsl(var(--primary))]">{deals.length}+</p>
+            <p className="text-sm text-[hsl(var(--muted-foreground))]">{t.home.activeDeals}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-[hsl(var(--success))]">{stores.length}</p>
+            <p className="text-sm text-[hsl(var(--muted-foreground))]">{t.home.stores}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-[hsl(var(--warning))]">
+              {deals.length > 0 ? `${Math.max(...deals.map(d => getDiscountPercentage(d.savings)))}%` : '0%'}
+            </p>
+            <p className="text-sm text-[hsl(var(--muted-foreground))]">{t.home.maxDiscount}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-[hsl(var(--foreground))]">24/7</p>
+            <p className="text-sm text-[hsl(var(--muted-foreground))]">{t.home.priceUpdates}</p>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Price Comparison Modal */}
       {comparisonGame && (

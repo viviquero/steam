@@ -1,20 +1,66 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // Helper functions for validation
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isValidString(field, minLen, maxLen) {
+      return field is string && field.size() >= minLen && field.size() <= maxLen;
+    }
+    
+    function isValidEmail(email) {
+      return email is string && email.matches('^[^@]+@[^@]+\\.[^@]+$');
+    }
+    
+    function isValidPrice(price) {
+      return price == null || (price is number && price >= 0 && price <= 999999);
+    }
+
     // Users can only read and write their own data
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && 
+        isValidString(request.resource.data.displayName, 2, 50) &&
+        isValidEmail(request.resource.data.email);
+      allow update: if isOwner(userId) &&
+        (!('displayName' in request.resource.data) || isValidString(request.resource.data.displayName, 2, 50)) &&
+        (!('notificationEmail' in request.resource.data) || isValidEmail(request.resource.data.notificationEmail));
+      allow delete: if isOwner(userId);
       
       // Wishlist subcollection
       match /wishlist/{gameId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+          isValidString(request.resource.data.gameID, 1, 50) &&
+          isValidString(request.resource.data.gameTitle, 1, 200) &&
+          isValidPrice(request.resource.data.targetPrice);
+        allow update: if isOwner(userId) &&
+          isValidPrice(request.resource.data.targetPrice);
+        allow delete: if isOwner(userId);
       }
     }
     
     // Price alerts - users can only access their own
     match /priceAlerts/{alertId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow read: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow create: if isAuthenticated() && 
+        request.auth.uid == request.resource.data.userId &&
+        isValidString(request.resource.data.gameTitle, 1, 200) &&
+        isValidPrice(request.resource.data.targetPrice);
+      allow update: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+    
+    // Deny all other access by default
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

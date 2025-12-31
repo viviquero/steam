@@ -11,6 +11,7 @@ import {
 import { db, isFirebaseConfigured } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import type { WishlistItem } from '@/types';
+import logger from '@/utils/logger';
 
 interface WishlistContextType {
   items: WishlistItem[];
@@ -55,7 +56,7 @@ export function WishlistProvider({ children }: WishlistProviderProps) {
         }));
       }
     } catch (error) {
-      console.error('Error loading wishlist from localStorage:', error);
+      logger.error('Error loading wishlist from localStorage:', error);
     }
     return [];
   };
@@ -65,7 +66,7 @@ export function WishlistProvider({ children }: WishlistProviderProps) {
     try {
       localStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(wishlist));
     } catch (error) {
-      console.error('Error saving wishlist to localStorage:', error);
+      logger.error('Error saving wishlist to localStorage:', error);
     }
   };
 
@@ -108,7 +109,7 @@ export function WishlistProvider({ children }: WishlistProviderProps) {
       setItems(wishlistItems);
       setLoading(false);
     }, (error) => {
-      console.error('Error loading wishlist:', error);
+      logger.error('Error loading wishlist:', error);
       setLoading(false);
     });
 
@@ -144,7 +145,7 @@ export function WishlistProvider({ children }: WishlistProviderProps) {
         lastChecked: serverTimestamp(),
       });
     } catch (error) {
-      console.error('Error adding to wishlist:', error);
+      logger.error('Error adding to wishlist:', error);
       throw error;
     }
   };
@@ -166,7 +167,7 @@ export function WishlistProvider({ children }: WishlistProviderProps) {
       const docRef = doc(db, 'users', user.uid, 'wishlist', gameID);
       await deleteDoc(docRef);
     } catch (error) {
-      console.error('Error removing from wishlist:', error);
+      logger.error('Error removing from wishlist:', error);
       throw error;
     }
   };
@@ -190,7 +191,7 @@ export function WishlistProvider({ children }: WishlistProviderProps) {
       const docRef = doc(db, 'users', user.uid, 'wishlist', gameID);
       await setDoc(docRef, { targetPrice }, { merge: true });
     } catch (error) {
-      console.error('Error updating target price:', error);
+      logger.error('Error updating target price:', error);
       throw error;
     }
   };

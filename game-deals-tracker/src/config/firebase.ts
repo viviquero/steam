@@ -29,12 +29,20 @@ if (isFirebaseConfigured) {
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
     db = getFirestore(app);
-    console.log('Firebase initialized successfully');
-  } catch (error) {
-    console.warn('Firebase initialization failed:', error);
+    // Only log in development
+    if (import.meta.env.DEV) {
+      console.log('Firebase initialized successfully');
+    }
+  } catch {
+    // Silent fail in production
+    if (import.meta.env.DEV) {
+      console.warn('Firebase initialization failed');
+    }
   }
 } else {
-  console.warn('Firebase not configured. Running in demo mode.');
+  if (import.meta.env.DEV) {
+    console.warn('Firebase not configured. Running in demo mode.');
+  }
 }
 
 export { auth, db };

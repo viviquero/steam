@@ -4,6 +4,7 @@ import { Button, Input, Card, CardContent } from '@/components/ui';
 import { Filter, X, ChevronDown, ChevronUp, Store, DollarSign, SortAsc } from 'lucide-react';
 import { getStores } from '@/services/cheapshark';
 import type { Store as StoreType, DealsFilter as DealsFilterType } from '@/types';
+import logger from '@/utils/logger';
 
 interface DealsFilterProps {
   onFilterChange: (filters: DealsFilterType) => void;
@@ -93,7 +94,7 @@ export function DealsFilter({ onFilterChange, initialFilters = {} }: DealsFilter
         const storeList = await getStores();
         setStores(storeList);
       } catch (error) {
-        console.error('Error loading stores:', error);
+        logger.error('Error loading stores:', error);
       } finally {
         setLoadingStores(false);
       }

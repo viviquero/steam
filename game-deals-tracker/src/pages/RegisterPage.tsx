@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, Input, Button } from '@/components/ui';
 import { Gamepad2, Mail, Lock, User, AlertCircle } from 'lucide-react';
+import { isValidEmail, validatePassword, validateDisplayName, sanitizeString } from '@/utils/validation';
 
 export function RegisterPage() {
   const [displayName, setDisplayName] = useState('');
@@ -25,20 +26,36 @@ export function RegisterPage() {
       return;
     }
 
+    // Validate display name
+    const nameValidation = validateDisplayName(displayName);
+    if (!nameValidation.isValid) {
+      setError(nameValidation.error || 'Nombre inválido');
+      return;
+    }
+
+    // Validate email format
+    if (!isValidEmail(email)) {
+      setError('Email inválido');
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError(t.register.passwordsNoMatch);
       return;
     }
 
-    if (password.length < 6) {
-      setError(t.register.passwordLength);
+    // Validate password strength
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      setError(passwordValidation.errors[0]);
       return;
     }
 
     try {
       setLoading(true);
       setError(null);
-      await register(email, password, displayName);
+      const sanitizedName = sanitizeString(displayName);
+      await register(email.toLowerCase().trim(), password, sanitizedName);
       navigate('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : t.register.error);

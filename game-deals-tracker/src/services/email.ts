@@ -1,6 +1,9 @@
 // Email service using EmailJS (free tier: 200 emails/month)
 // Sign up at https://www.emailjs.com/ to get your keys
 
+import logger from '@/utils/logger';
+import { isValidEmail, sanitizeString } from '@/utils/validation';
+
 const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'demo';
 const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'demo';
 const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'demo';
@@ -43,7 +46,7 @@ export const isEmailConfigured = (): boolean => {
 // Initialize EmailJS (call once on app load)
 export const initEmailJS = async (): Promise<void> => {
   if (!isEmailConfigured()) {
-    console.log('📧 Email service running in demo mode');
+    logger.log('📧 Email service running in demo mode');
     return;
   }
 
@@ -51,20 +54,33 @@ export const initEmailJS = async (): Promise<void> => {
     // Dynamically import EmailJS only if configured
     const emailjs = await import('@emailjs/browser');
     emailjs.init(EMAILJS_PUBLIC_KEY);
-    console.log('📧 EmailJS initialized');
+    logger.log('📧 EmailJS initialized');
   } catch (error) {
-    console.error('Failed to initialize EmailJS:', error);
+    logger.error('Failed to initialize EmailJS:', error);
   }
 };
 
 // Send a generic email
 export const sendEmail = async (data: EmailData): Promise<{ success: boolean; message: string }> => {
+  // Validate email
+  if (!isValidEmail(data.to_email)) {
+    return { success: false, message: 'Email inválido' };
+  }
+
+  // Sanitize inputs
+  const sanitizedData = {
+    ...data,
+    to_name: sanitizeString(data.to_name),
+    subject: sanitizeString(data.subject),
+    message: sanitizeString(data.message),
+  };
+
   if (!isEmailConfigured()) {
     // Demo mode - simulate sending
-    console.log('📧 [DEMO] Email would be sent:', data);
+    logger.log('📧 [DEMO] Email would be sent:', sanitizedData.to_email);
     return { 
       success: true, 
-      message: 'Modo demo: El email se enviaría a ' + data.to_email 
+      message: 'Modo demo: El email se enviaría a ' + sanitizedData.to_email 
     };
   }
 
@@ -75,20 +91,20 @@ export const sendEmail = async (data: EmailData): Promise<{ success: boolean; me
       EMAILJS_SERVICE_ID,
       EMAILJS_TEMPLATE_ID,
       {
-        to_email: data.to_email,
-        to_name: data.to_name,
-        subject: data.subject,
-        message: data.message,
+        to_email: sanitizedData.to_email,
+        to_name: sanitizedData.to_name,
+        subject: sanitizedData.subject,
+        message: sanitizedData.message,
       },
       EMAILJS_PUBLIC_KEY
     );
 
     return { success: true, message: 'Email enviado correctamente' };
   } catch (error) {
-    console.error('Error sending email:', error);
+    logger.error('Error sending email:', error);
     return { 
       success: false, 
-      message: error instanceof Error ? error.message : 'Error al enviar email' 
+      message: 'Error al enviar email' 
     };
   }
 };

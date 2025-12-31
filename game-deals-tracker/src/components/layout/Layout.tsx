@@ -16,7 +16,7 @@ export function Layout() {
       <footer className="border-t border-[hsl(var(--border))] py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <p className="text-center text-sm text-[hsl(var(--muted-foreground))]">
-            Game Deals Tracker © {new Date().getFullYear()} — {t.footer.poweredBy}{' '}
+            KeroDeals © {new Date().getFullYear()} — {t.footer.poweredBy}{' '}
             <a 
               href="https://www.cheapshark.com" 
               target="_blank" 

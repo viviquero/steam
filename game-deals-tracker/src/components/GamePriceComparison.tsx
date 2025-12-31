@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, Button } from '@/components/u
 import { ExternalLink, Loader2, TrendingDown, X } from 'lucide-react';
 import { getGameInfo, getStores, getDealRedirectUrl } from '@/services/cheapshark';
 import type { Store as StoreType, GameInfo } from '@/types';
+import logger from '@/utils/logger';
 
 interface GamePriceComparisonProps {
   gameID: string;
@@ -74,7 +75,7 @@ export function GamePriceComparison({ gameID, gameTitle, onClose }: GamePriceCom
         setStores(storeMap);
         setGameInfo(info);
       } catch (err) {
-        console.error('Error loading price comparison:', err);
+        logger.error('Error loading price comparison:', err);
         setError(t.error);
       } finally {
         setLoading(false);

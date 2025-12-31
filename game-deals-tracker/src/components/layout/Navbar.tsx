@@ -4,6 +4,7 @@ import { useSettings } from '@/contexts/SettingsContext';
 import { Button } from '@/components/ui';
 import { Gamepad2, Search, Heart, Settings, LogOut, User, Menu, X, Sparkles } from 'lucide-react';
 import { useState } from 'react';
+import logger from '@/utils/logger';
 
 export function Navbar() {
   const { user, logout, isDemo } = useAuth();
@@ -23,7 +24,7 @@ export function Navbar() {
     try {
       await logout();
     } catch (error) {
-      console.error('Logout error:', error);
+      logger.error('Logout error:', error);
     }
   };
 
@@ -34,7 +35,7 @@ export function Navbar() {
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 text-xl font-bold text-[hsl(var(--primary))]">
             <Gamepad2 className="h-6 w-6" />
-            <span className="hidden sm:inline">Game Deals</span>
+            <span>KeroDeals</span>
           </Link>
 
           {/* Desktop Navigation */}

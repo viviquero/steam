@@ -3,9 +3,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, Button, Input } from '@/components/ui';
-import { Heart, LogIn, Trash2, Bell, Loader2, Edit2, Check, X, Mail } from 'lucide-react';
+import { Heart, LogIn, Trash2, Bell, Loader2, Edit2, Check, X, Mail, BarChart3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { EmailReportModal } from '@/components/EmailReportModal';
+import { GamePriceComparison } from '@/components/GamePriceComparison';
 
 export function WishlistPage() {
   const { user } = useAuth();
@@ -14,6 +15,7 @@ export function WishlistPage() {
   const [editingPrice, setEditingPrice] = useState<string | null>(null);
   const [targetPriceInput, setTargetPriceInput] = useState('');
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [comparisonGame, setComparisonGame] = useState<{ gameID: string; title: string } | null>(null);
 
   const handleSetTargetPrice = async (gameID: string) => {
     const price = parseFloat(targetPriceInput);
@@ -183,10 +185,20 @@ export function WishlistPage() {
 
                       <div className="flex items-center gap-2 mt-2">
                         <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setComparisonGame({ gameID: item.gameID, title: item.gameTitle })}
+                          className="gap-1 h-7 text-xs"
+                          title={language === 'es' ? 'Comparar precios' : 'Compare prices'}
+                        >
+                          <BarChart3 className="h-3 w-3" />
+                          {language === 'es' ? 'Comparar' : 'Compare'}
+                        </Button>
+                        <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => removeFromWishlist(item.gameID)}
-                          className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                          className="text-red-500 hover:text-red-600 hover:bg-red-500/10 h-7"
                           title={t.wishlist.remove}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -206,6 +218,15 @@ export function WishlistPage() {
         isOpen={showEmailModal} 
         onClose={() => setShowEmailModal(false)} 
       />
+
+      {/* Price Comparison Modal */}
+      {comparisonGame && (
+        <GamePriceComparison
+          gameID={comparisonGame.gameID}
+          gameTitle={comparisonGame.title}
+          onClose={() => setComparisonGame(null)}
+        />
+      )}
     </div>
   );
 }

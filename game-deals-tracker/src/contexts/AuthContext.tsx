@@ -11,6 +11,7 @@ import {
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db, isFirebaseConfigured } from '@/config/firebase';
 import type { User } from '@/types';
+import logger from '@/utils/logger';
 
 interface AuthContextType {
   user: User | null;
@@ -102,7 +103,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setUser(null);
         }
       } catch (err) {
-        console.error('Error formatting user:', err);
+        logger.error('Error formatting user:', err);
         setUser(null);
       } finally {
         setLoading(false);
