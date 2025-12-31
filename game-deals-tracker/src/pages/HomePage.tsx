@@ -4,19 +4,19 @@ import { useSettings } from '@/contexts/SettingsContext';
 import { useUserPreferences } from '@/contexts/UserPreferencesContext';
 import type { GameDeal, Store, DealsFilter as DealsFilterType } from '@/types';
 import { Card, CardContent, Button } from '@/components/ui';
-import { ExternalLink, TrendingDown, Loader2, BarChart3, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ExternalLink, TrendingDown, Loader2, BarChart3, Heart, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Star, LogIn } from 'lucide-react';
 import { DealsFilter } from '@/components/DealsFilter';
 import { GamePriceComparison } from '@/components/GamePriceComparison';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 const DEALS_PER_PAGE = 30; // 5 columns x 6 rows
 
 export function HomePage() {
   const { t, formatPrice, language } = useSettings();
   const { user } = useAuth();
-  const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
+  const { addToWishlist, removeFromWishlist, isInWishlist, items: wishlistItems } = useWishlist();
   const { preferences, applyPreferencesToFilters } = useUserPreferences();
   const navigate = useNavigate();
   
@@ -24,6 +24,10 @@ export function HomePage() {
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [wishlistVisible, setWishlistVisible] = useState(() => {
+    const saved = localStorage.getItem('wishlist-section-visible');
+    return saved !== null ? saved === 'true' : true;
+  });
   
   // Initialize filters with user preferences
   const getInitialFilters = useCallback((): DealsFilterType => {
@@ -156,6 +160,12 @@ export function HomePage() {
     return store ? getStoreIconUrl(store) : '';
   };
 
+  const toggleWishlistSection = () => {
+    const newValue = !wishlistVisible;
+    setWishlistVisible(newValue);
+    localStorage.setItem('wishlist-section-visible', String(newValue));
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -199,6 +209,121 @@ export function HomePage() {
 
       {/* Filters - Above games */}
       <DealsFilter onFilterChange={handleFilterChange} initialFilters={filters} />
+
+      {/* Wishlist Section - Collapsible */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={toggleWishlistSection}
+            className="flex items-center gap-2 text-lg font-semibold hover:text-[hsl(var(--primary))] transition-colors"
+          >
+            <Star className="h-5 w-5 text-[hsl(var(--warning))] fill-current" />
+            {t.home.wishlistSection}
+            {wishlistVisible ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+            {user && wishlistItems.length > 0 && (
+              <span className="text-sm font-normal text-[hsl(var(--muted-foreground))]">
+                ({wishlistItems.length})
+              </span>
+            )}
+          </button>
+          {user && wishlistItems.length > 0 && (
+            <Link
+              to="/wishlist"
+              className="text-sm text-[hsl(var(--primary))] hover:underline"
+            >
+              {t.home.viewAll}
+            </Link>
+          )}
+        </div>
+
+        {wishlistVisible && (
+          <div className="transition-all duration-300 ease-in-out">
+            {!user ? (
+              // Not logged in state
+              <Card className="border-dashed">
+                <CardContent className="py-6 text-center">
+                  <LogIn className="h-8 w-8 mx-auto mb-2 text-[hsl(var(--muted-foreground))]" />
+                  <p className="text-[hsl(var(--muted-foreground))] mb-3">{t.home.wishlistLogin}</p>
+                  <Button variant="primary" size="sm" onClick={() => navigate('/login')}>
+                    {t.nav.login}
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : wishlistItems.length === 0 ? (
+              // Empty wishlist state
+              <Card className="border-dashed">
+                <CardContent className="py-6 text-center">
+                  <Heart className="h-8 w-8 mx-auto mb-2 text-[hsl(var(--muted-foreground))]" />
+                  <p className="text-[hsl(var(--muted-foreground))]">{t.home.wishlistEmpty}</p>
+                </CardContent>
+              </Card>
+            ) : (
+              // Wishlist games horizontal scroll
+              <div className="relative">
+                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-[hsl(var(--border))] scrollbar-track-transparent">
+                  {wishlistItems.slice(0, 10).map((item) => (
+                    <Card 
+                      key={item.gameID} 
+                      className="flex-shrink-0 w-[160px] group hover:border-[hsl(var(--primary))] transition-colors overflow-hidden"
+                    >
+                      <div className="aspect-video relative overflow-hidden bg-[hsl(var(--secondary))]">
+                        <img
+                          src={item.thumb}
+                          alt={item.gameTitle}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          loading="lazy"
+                        />
+                        <div className="absolute top-1 right-1">
+                          <button
+                            onClick={() => removeFromWishlist(item.gameID)}
+                            className="p-1 rounded bg-red-500/90 text-white hover:bg-red-600 backdrop-blur-sm transition-colors"
+                            title={t.wishlist.remove}
+                          >
+                            <Heart className="h-3 w-3 fill-current" />
+                          </button>
+                        </div>
+                      </div>
+                      <CardContent className="p-2 space-y-1">
+                        <h4 className="font-medium text-xs line-clamp-2 min-h-[2rem] leading-tight" title={item.gameTitle}>
+                          {item.gameTitle}
+                        </h4>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-[hsl(var(--success))]">
+                            {formatPrice(String(item.currentBestPrice))}
+                          </span>
+                          {item.targetPrice && (
+                            <span className="text-[10px] text-[hsl(var(--muted-foreground))]">
+                              🎯 {formatPrice(String(item.targetPrice))}
+                            </span>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  {wishlistItems.length > 10 && (
+                    <Link
+                      to="/wishlist"
+                      className="flex-shrink-0 w-[160px] flex items-center justify-center"
+                    >
+                      <Card className="w-full h-full flex items-center justify-center hover:border-[hsl(var(--primary))] transition-colors">
+                        <CardContent className="py-8 text-center">
+                          <span className="text-sm text-[hsl(var(--primary))]">
+                            +{wishlistItems.length - 10} {t.home.viewAll}
+                          </span>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Deals Grid */}
       {loading ? (

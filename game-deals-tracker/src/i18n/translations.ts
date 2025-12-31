@@ -23,6 +23,12 @@ export const translations = {
       getDeal: 'Ver Oferta',
       loading: 'Cargando mejores ofertas...',
       tryAgain: 'Intentar de nuevo',
+      wishlistSection: 'Mi Lista de Deseados',
+      wishlistEmpty: 'Aún no tienes juegos en tu lista',
+      wishlistLogin: 'Inicia sesión para ver tu lista de deseados',
+      hideWishlist: 'Ocultar lista',
+      showWishlist: 'Mostrar lista',
+      viewAll: 'Ver todos',
     },
     // Search page
     search: {
@@ -162,6 +168,12 @@ export const translations = {
       getDeal: 'Get Deal',
       loading: 'Loading best deals...',
       tryAgain: 'Try again',
+      wishlistSection: 'My Wishlist',
+      wishlistEmpty: 'No games in your wishlist yet',
+      wishlistLogin: 'Sign in to see your wishlist',
+      hideWishlist: 'Hide wishlist',
+      showWishlist: 'Show wishlist',
+      viewAll: 'View all',
     },
     // Search page
     search: {
